@@ -1,16 +1,6 @@
 import * as fs from 'fs';
-import TagUtils from './utils/convertTagsUtils';
+import TagUtils from './utils/tagsUtils';
 import tags from './classes/Tags';
-
-
-const str = fs.readFileSync("C:/Users/gurre/Desktop/project/htmlParseToMd/src/index.html", 'utf-8')
-
-
-/*
-
-            que sea una command line app , le doy una url  y un nombre de file, y me crea el md en local like toma "url" nombre_file.md 
-            
-*/
 
 
 const utils: TagUtils = new TagUtils
@@ -138,8 +128,6 @@ function cleanStrongTags(html: string): string {
     });
     return html;
 }
-
-
 
 function parseFileByUrl(urlOrigin: string, urlDest: string, fileName: string) {
     try {
