@@ -1,19 +1,22 @@
 import * as fs from 'fs';
-import * as cheerio from 'cheerio';
 import TagUtils from './utils/convertTagsUtils';
+import tags from './classes/Tags';
 
 
-const str = fs.readFileSync('../src/index.html', 'utf-8')
+const str = fs.readFileSync("C:/Users/gurre/Desktop/project/htmlParseToMd/src/index.html", 'utf-8')
 
 
+/*
+
+            que sea una command line app , le doy una url  y un nombre de file, y me crea el md en local like toma "url" nombre_file.md 
+            
+*/
 
 
-type tags = {
-    html: string;
-    md: string;
-}
 const utils: TagUtils = new TagUtils
+
 let hTagArr: string[] = ["a", "img", "video", "audio", "input", "label"]
+
 const diccTags: Record<string, tags> = {
     // Encabezados
     doctype: { html: "<!DOCTYPE html>", md: "" },
@@ -136,20 +139,26 @@ function cleanStrongTags(html: string): string {
     return html;
 }
 
-function run() {
-    const step1 = detectHtmlOnString(str);
-    const step2 = cleanStrongTags(step1);
-    fs.writeFileSync('output.md', step2);
-    const finalCleaned = step2
-        .replace(/<!DOCTYPE html>/gi, '')
-        .replace(/<\/?html.*?>/gi, '')
-        .replace(/<\/?head.*?>/gi, '')
-        .replace(/<meta[^>]*>/gi, '')
-        .replace(/<\/?body.*?>/gi, '')
-        .replace(/<title>.*?<\/title>/gi, '')
-        .trim();
 
-    fs.writeFileSync('output.md', finalCleaned);
+
+function parseFileByUrl(urlOrigin: string, urlDest: string, fileName: string) {
+    try {
+        const htmlContent = fs.readFileSync(urlOrigin, 'utf-8');
+        const step1 = detectHtmlOnString(htmlContent);
+        const step2 = cleanStrongTags(step1);
+        const finalCleaned = step2
+            .replace(/<!DOCTYPE html>/gi, '')
+            .replace(/<\/?html.*?>/gi, '')
+            .replace(/<\/?head.*?>/gi, '')
+            .replace(/<meta[^>]*>/gi, '')
+            .replace(/<\/?body.*?>/gi, '')
+            .replace(/<title>.*?<\/title>/gi, '')
+            .trim();
+
+        fs.writeFileSync(`${urlDest}/${fileName}.md`, finalCleaned, 'utf-8');
+        console.log(`✅ Archivo Markdown creado en: ${urlDest}`);
+    } catch (error) {
+        console.error("❌ Error procesando archivos:", error);
+    }
 }
-
-run();
+export default parseFileByUrl
