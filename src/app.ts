@@ -1,14 +1,18 @@
 import readline from 'readline';
-
-
+import ValidateSourceUtils from './utils/validateSourceUtils';
 import tags from './classes/Tags';
-import ParserUtils from './utils/parserUtils';
+import TagUtils from './utils/tagUtils';
+import Source from './classes/Source';
+import ParseUtils from './utils/parseUtils';
 
 
-const utils: ParserUtils = new ParserUtils
+const parseUtils: ParseUtils = new ParseUtils
+const urlUtils: ValidateSourceUtils = new ValidateSourceUtils
 
+let url: Source
+let path: Source
+let source: Source[] = [url = { str: "", flag: false }, path = { str: "", flag: false }]
 let hTagArr: string[] = ["a", "img", "video", "audio", "input", "label"]
-
 const diccTags: Record<string, tags> = {
     // Encabezados
     doctype: { html: "<!DOCTYPE html>", md: "" },
@@ -116,25 +120,18 @@ const diccTags: Record<string, tags> = {
     source: { html: "<source>", md: "" }
 };
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-})
 
-let urlOrigin = ""
-function startapp() {
 
-    rl.question('Introduce la url de tu archivo html: ', (url => {
-        console.log(`Recibido: ${url}`)
-        urlOrigin = url
-        rl.question('introduce la ruta donde quieres guardar tu archivo md: ', ((urlDest) => {
-            rl.question('introduzca un nombre para el archivo que contendra el resultado...', ((fileName) => {
-                utils.parseFileByUrl(urlOrigin, urlDest, fileName, diccTags, hTagArr)
-                rl.close();
-            }))
-        }))
-    }))
+
+function toMd() {
+    let str = process.argv[2]
+    let fileName = process.argv[3]
+    urlUtils.updateSourceArr(source, str)
+    source.forEach((e) => {
+        e.flag == true ? parseUtils.parseFileByUrl() : parseUtils.parseFileByPath(e.str, fileName, diccTags, hTagArr)
+    })
 
 }
 
-startapp()
+toMd()
+
