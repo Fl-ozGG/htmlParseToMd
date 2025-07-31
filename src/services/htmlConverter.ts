@@ -1,105 +1,89 @@
-import tags from "../classes/Tags";
-import * as fs from 'fs';
-import Write from "./writeSource";
-import * as cheerio from 'cheerio';
+import TurndownService from 'turndown';
+import Write from './writeSource';
+import ReadSource from './readSource';
 
+const writeService = new Write();
+const readService = new ReadSource();
 
-const write = new Write
 class HtmlConverter {
+    private turndownService: TurndownService;
 
-    parseFileBySource(urlOrigin: string, fileName: string, diccTags: Record<string, tags>, hTagArr: string[]) {
-        try {
-            const finalCleaned = this.convertToMd(urlOrigin, diccTags, hTagArr)
-            write.writeFile(fileName, finalCleaned)
-            console.log(`✅ Archivo Markdown creado.`);
-        } catch (error) {
-            console.error("❌ Error procesando archivos:", error);
-        }
-    }
-    parseFileByUrl(str: string, fileName: string) {
-
-    }
-
-    detectHtmlOnString(html: string, diccTags: Record<string, tags>): string {
-        for (const key in diccTags) {
-            const { html: htmlTag, md } = diccTags[key];
-            html = html.replace(new RegExp(htmlTag, 'gi'), md);
-        }
-        return html;
-    }
-    cleanStrongTags(html: string, hTagArr: string[]): string {
-        hTagArr.forEach(tag => {
-            html = this.replaceHTag(tag, html);
+    constructor() {
+        this.turndownService = new TurndownService({
+            headingStyle: 'atx',
+            codeBlockStyle: 'fenced',
+            emDelimiter: '*',
+            bulletListMarker: '-',
         });
-        return html;
+
+        this.addCustomRules();
     }
-    replaceHTag(tag: string, htmlText: string): string {
-        const $ = cheerio.load(htmlText);
 
-        switch (tag) {
-            case "a":
-                $('a').each((_, el) => {
-                    const text = $(el).text();
-                    const href = $(el).attr('href') || '';
-                    $(el).replaceWith(`[${text}](${href})`);
-                });
-                break;
+    private addCustomRules() {
+        // Video
+        this.turndownService.addRule('video', {
+            filter: ['video'],
+            replacement: (content, node) => {
+                const src = (node as HTMLVideoElement).getAttribute('src') ||
+                    (node.querySelector('source')?.getAttribute('src')) || '';
+                return src ? `[Video](${src})` : '';
+            }
+        });
 
-            case "img":
-                $('img').each((_, el) => {
-                    const alt = $(el).attr('alt') || '';
-                    const src = $(el).attr('src') || '';
-                    $(el).replaceWith(`![${alt}](${src})`);
-                });
-                break;
+        // Audio
+        this.turndownService.addRule('audio', {
+            filter: ['audio'],
+            replacement: (content, node) => {
+                const src = (node as HTMLAudioElement).getAttribute('src') ||
+                    (node.querySelector('source')?.getAttribute('src')) || '';
+                return src ? `[Audio](${src})` : '';
+            }
+        });
 
-            case "video":
-                $('video').each((_, el) => {
-                    const src = $(el).find('source').attr('src') || $(el).attr('src') || '';
-                    $(el).replaceWith(`[Video](${src})`);
-                });
-                break;
+        // Input
+        this.turndownService.addRule('input', {
+            filter: ['input'],
+            replacement: (_content, node) => {
+                const input = node as HTMLInputElement;
+                const type = input.getAttribute('type') || 'text';
+                const name = input.getAttribute('name') || '';
+                const value = input.getAttribute('value') || '';
+                return `\`${type}: ${name} = ${value}\``;
+            }
+        });
 
-            case "audio":
-                $('audio').each((_, el) => {
-                    const src = $(el).find('source').attr('src') || $(el).attr('src') || '';
-                    $(el).replaceWith(`[Audio](${src})`);
-                });
-                break;
+        // Label
+        this.turndownService.addRule('label', {
+            filter: ['label'],
+            replacement: (content) => `**${content}**`
+        });
+    }
 
-            case "input":
-                $('input').each((_, el) => {
-                    const type = $(el).attr('type') || 'text';
-                    const name = $(el).attr('name') || '';
-                    const value = $(el).attr('value') || '';
-                    $(el).replaceWith(`\`${type}: ${name} = ${value}\``);
-                });
-                break;
-
-            case "label":
-                $('label').each((_, el) => {
-                    const text = $(el).text();
-                    $(el).replaceWith(`**${text}**`);
-                });
-                break;
+    parseFileByPath(urlOrigin: string, fileName: string) {
+        try {
+            const htmlContent = readService.readPath(urlOrigin);
+            const markdown = this.convertToMd(htmlContent);
+            writeService.writeFile(fileName, markdown);
+            console.log(`✅ Markdown generado desde archivo.`);
+        } catch (error) {
+            console.error("❌ Error procesando archivo:", error);
         }
-
-        return $.html();
-    }
-    convertToMd(urlOrigin: string, diccTags: Record<string, tags>, hTagArr: string[]): string {
-        const htmlContent = fs.readFileSync(urlOrigin, 'utf-8');
-        const step1 = this.detectHtmlOnString(htmlContent, diccTags);
-        const step2 = this.cleanStrongTags(step1, hTagArr);
-        const finalCleaned = step2
-            .replace(/<!DOCTYPE html>/gi, '')
-            .replace(/<\/?html.*?>/gi, '')
-            .replace(/<\/?head.*?>/gi, '')
-            .replace(/<meta[^>]*>/gi, '')
-            .replace(/<\/?body.*?>/gi, '')
-            .replace(/<title>.*?<\/title>/gi, '')
-            .trim();
-        return finalCleaned
     }
 
+    async parseFileByUrl(url: string, fileName: string) {
+        try {
+            const htmlContent = await readService.readUrl(url);
+            const markdown = this.convertToMd(htmlContent);
+            writeService.writeFile(fileName, markdown);
+            console.log(`✅ Markdown generado desde URL.`);
+        } catch (error) {
+            console.error("❌ Error procesando URL:", error);
+        }
+    }
+
+    convertToMd(htmlContent: string): string {
+        return this.turndownService.turndown(htmlContent);
+    }
 }
-export default HtmlConverter
+
+export default HtmlConverter;

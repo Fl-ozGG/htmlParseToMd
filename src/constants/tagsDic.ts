@@ -6,6 +6,8 @@ class TagsDic {
     readonly diccTags: Record<string, tags> = {
         // Encabezados
         doctype: { html: "<!DOCTYPE html>", md: "" },
+        div: { html: "<div>", md: "" },
+        divc: { html: "</div>", md: "" },
         title: { html: "<title>", md: "" },
         titlec: { html: "</title>", md: "" },
         html: { html: "<html>", md: "" },
