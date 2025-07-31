@@ -1,9 +1,24 @@
+import tags from "../classes/Tags";
 import * as fs from 'fs';
-import tags from '../classes/Tags';
+import Write from "./writeSource";
 import * as cheerio from 'cheerio';
 
-class TagUtils {
 
+const write = new Write
+class HtmlConverter {
+
+    parseFileBySource(urlOrigin: string, fileName: string, diccTags: Record<string, tags>, hTagArr: string[]) {
+        try {
+            const finalCleaned = this.convertToMd(urlOrigin, diccTags, hTagArr)
+            write.writeFile(fileName, finalCleaned)
+            console.log(`✅ Archivo Markdown creado.`);
+        } catch (error) {
+            console.error("❌ Error procesando archivos:", error);
+        }
+    }
+    parseFileByUrl(str: string, fileName: string) {
+
+    }
 
     detectHtmlOnString(html: string, diccTags: Record<string, tags>): string {
         for (const key in diccTags) {
@@ -71,8 +86,20 @@ class TagUtils {
 
         return $.html();
     }
-
-
+    convertToMd(urlOrigin: string, diccTags: Record<string, tags>, hTagArr: string[]): string {
+        const htmlContent = fs.readFileSync(urlOrigin, 'utf-8');
+        const step1 = this.detectHtmlOnString(htmlContent, diccTags);
+        const step2 = this.cleanStrongTags(step1, hTagArr);
+        const finalCleaned = step2
+            .replace(/<!DOCTYPE html>/gi, '')
+            .replace(/<\/?html.*?>/gi, '')
+            .replace(/<\/?head.*?>/gi, '')
+            .replace(/<meta[^>]*>/gi, '')
+            .replace(/<\/?body.*?>/gi, '')
+            .replace(/<title>.*?<\/title>/gi, '')
+            .trim();
+        return finalCleaned
+    }
 
 }
-export default TagUtils
+export default HtmlConverter
