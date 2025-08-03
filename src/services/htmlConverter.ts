@@ -59,7 +59,7 @@ class HtmlConverter {
         });
     }
 
-    parseFileByPath(urlOrigin: string, fileName: string) {
+    parseFileByPath(urlOrigin: string, fileName: string = "output") {
         try {
             const htmlContent = readService.readPath(urlOrigin);
             const markdown = this.convertToMd(htmlContent);

@@ -30,6 +30,5 @@ class ReadSource {
 
     }
 
-
 }
 export default ReadSource
