@@ -2,16 +2,16 @@ import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import HtmlConverter from '../services/htmlConverter';
 import ReadSource from '../services/readSource';
-import * as path from 'path';
-import os from 'os';
+import axios from 'axios';
 
 
 const app = express();
-const port = 3000;
+const port = 4000;
 
 app.use(bodyParser.json());
 const read = new ReadSource
 const htmlConverter = new HtmlConverter();
+
 
 app.post('/convert-html-url', async (req: Request, res: Response) => {
     const source: string = req.body.html;
@@ -21,32 +21,52 @@ app.post('/convert-html-url', async (req: Request, res: Response) => {
     }
 
     try {
+        // 1. Scrapear HTML desde la URL
         const html = await read.readUrl(source);
+
+        // 2. Convertir HTML a Markdown
+        console.log('Convirtiendo a Markdown...');
         const markdown = htmlConverter.convertToMd(html);
-        res.json({ markdown });
+        console.log('Convertido a Markdown...');
+        console.log('Enviado a API Python...');
+        const response = await axios.post(
+            'http://localhost:8000/process_and_vectorize_text',
+            { text: markdown });
+        // 4. Devolver resultado combinado (markdown + vector)
+        res.json({
+            vector: response.data.vector
+        });
+
     } catch (error) {
-        console.error("❌ Error en la conversión:", error);
-        res.status(500).json({ error: 'Error al convertir HTML a Markdown.' });
+        if (axios.isAxiosError(error)) {
+            console.error('Error en la API de Python:', error.response?.data || error.message);
+        } else {
+            console.error(error);
+        }
+        res.status(500).json({ error: 'Error al convertir o procesar el texto.' });
     }
+
 });
 
-app.post('/convert-html-local', (req: Request, res: Response) => {
-    const source: string = req.body.html;
-    const desktopDir = path.join(os.homedir(), 'Desktop');
-    if (!source || typeof source !== 'string') {
-        return res.status(400).json({ error: 'El campo "html" es requerido y debe ser una cadena de texto.' });
-    }
 
+
+app.get('/ping-python', async (req: Request, res: Response) => {
+    console.log("Recibido ping-python");
     try {
-        htmlConverter.parseFileByPath(source);
-        res.status(200).json({ message: `Archivo generado en la ruta especificada: ${desktopDir} ` })
+        const response = await axios.get('http://localhost:8000/ping', { timeout: 5000 });
+        res.json({
+            status: 'ok',
+            pythonResponse: response.data
+        });
     } catch (error) {
-        console.error("❌ Error en la conversión:", error);
-        res.status(500).json({ error: 'Error al convertir HTML a Markdown.' });
+        res.status(500).json({
+            status: 'error',
+            message: 'No se pudo conectar con la API de Python',
+            detail: (error as any).message
+        });
     }
 });
 
-
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Servidor escuchando en http://localhost:${port}`);
 });
